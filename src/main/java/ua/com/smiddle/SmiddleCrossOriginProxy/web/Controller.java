@@ -15,10 +15,14 @@ import javax.annotation.PostConstruct;
 import javax.net.ssl.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
+import java.util.logging.Logger;
+
+import static java.util.logging.Logger.GLOBAL_LOGGER_NAME;
 
 /**
  * @author ksa on 10/26/17.
@@ -35,6 +39,8 @@ public class Controller {
     private volatile int PORT;
     @Value("${self.port}")
     private volatile int SELFPORT;
+
+    private Logger logger = Logger.getLogger(GLOBAL_LOGGER_NAME, "Controller");
 
 
     private WebResource service = null;
@@ -75,51 +81,58 @@ public class Controller {
         config.getProperties().put(HTTPSProperties.PROPERTY_HTTPS_PROPERTIES, new HTTPSProperties(null, context));
         client = Client.create(config);
         service = client.resource("https://" + HOSTNAME + ":" + PORT);
+        logger.info("initialized");
     }
 
     @RequestMapping(method = RequestMethod.GET)
     @CrossOrigin
     public void get(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        System.out.println("get "+service.getURI()+request.getServletPath());
+        logger.fine("get " + service.getURI() + request.getServletPath());
         ClientResponse cr = addHeaders(service, request).get(ClientResponse.class);
-        response.setStatus(cr.getStatus());
-        IOUtils.copy(cr.getEntityInputStream(), response.getOutputStream());
-        cr.getHeaders()
-                .forEach((e, k) -> response.addHeader(e, k.contains(HOSTNAME) ? k.get(0).replace(HOSTNAME, SELFNAME) : k.get(0)));
+        setResponse(response, cr);
     }
 
-    @RequestMapping(value = "/*", method = RequestMethod.POST)
+    @RequestMapping(method = RequestMethod.POST)
     @CrossOrigin
-    public Object post(@RequestBody String body, HttpServletRequest request) throws Exception {
-        System.out.println("post");
-        return addHeaders(service, request).post(String.class, body);
+    public void post(@RequestBody String body, HttpServletRequest request, HttpServletResponse response) throws Exception {
+        logger.fine("post " + service.getURI() + request.getServletPath());
+        ClientResponse cr = addHeaders(service, request).post(ClientResponse.class, body);
+        setResponse(response, cr);
     }
 
-    @RequestMapping(value = "/*", method = RequestMethod.PUT)
+    @RequestMapping(method = RequestMethod.PUT)
     @CrossOrigin
-    public Object put(@RequestBody String body, HttpServletRequest request) throws Exception {
-        System.out.println("put");
-        return addHeaders(service, request).put(String.class, body);
+    public void put(@RequestBody String body, HttpServletRequest request, HttpServletResponse response) throws Exception {
+        logger.fine("put " + service.getURI() + request.getServletPath());
+        ClientResponse cr = addHeaders(service, request).put(ClientResponse.class, body);
+        setResponse(response, cr);
     }
 
-    @RequestMapping(value = "/*", method = RequestMethod.DELETE)
+    @RequestMapping(method = RequestMethod.DELETE)
     @CrossOrigin
-    public Object delete(@RequestBody String body, HttpServletRequest request) throws Exception {
-        System.out.println("delete");
-        return addHeaders(service, request)
-                .delete(String.class, body);
+    public void delete(@RequestBody String body, HttpServletRequest request, HttpServletResponse response) throws Exception {
+        logger.fine("delete " + service.getURI() + request.getServletPath());
+        ClientResponse cr = addHeaders(service, request).delete(ClientResponse.class, body);
+        setResponse(response, cr);
     }
 
-    WebResource.Builder addHeaders(WebResource resource, HttpServletRequest request) {
+    private WebResource.Builder addHeaders(WebResource resource, HttpServletRequest request) {
         resource = resource.path(request.getServletPath());
         String s;
         Enumeration<String> en = request.getHeaderNames();
         while (en.hasMoreElements()) {
             s = en.nextElement();
             if (s.equalsIgnoreCase("Authorization"))
-                return resource.header("Authorization",request.getHeader(s));
+                return resource.header("Authorization", request.getHeader(s));
         }
         throw new IllegalStateException("no auth found");
+    }
+
+    private void setResponse(HttpServletResponse response, ClientResponse cr) throws IOException {
+        response.setStatus(cr.getStatus());
+        IOUtils.copy(cr.getEntityInputStream(), response.getOutputStream());
+        cr.getHeaders()
+                .forEach((e, k) -> response.addHeader(e, k.contains(HOSTNAME) ? k.get(0).replace(HOSTNAME, SELFNAME) : k.get(0)));
     }
 
 }
