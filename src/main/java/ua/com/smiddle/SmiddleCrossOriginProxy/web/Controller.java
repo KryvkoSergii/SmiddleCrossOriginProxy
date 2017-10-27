@@ -22,8 +22,6 @@ import java.security.cert.X509Certificate;
 import java.util.Enumeration;
 import java.util.logging.Logger;
 
-import static java.util.logging.Logger.GLOBAL_LOGGER_NAME;
-
 /**
  * @author ksa on 10/26/17.
  * @project SmiddleCrossOriginProxy
@@ -40,7 +38,7 @@ public class Controller {
     @Value("${self.port}")
     private volatile int SELFPORT;
 
-    private Logger logger = Logger.getLogger(GLOBAL_LOGGER_NAME, "Controller");
+    private Logger logger = Logger.getGlobal();
 
 
     private WebResource service = null;
