@@ -18,7 +18,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
-import java.util.Enumeration;
 
 /**
  * @author ksa on 10/26/17.
@@ -80,12 +79,12 @@ public class Controller {
     @RequestMapping(method = RequestMethod.GET)
     @CrossOrigin
     public void get(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        System.out.println("get");
+        System.out.println("get "+service.getURI()+request.getServletPath());
         ClientResponse cr = addHeaders(service, request).get(ClientResponse.class);
         response.setStatus(cr.getStatus());
         IOUtils.copy(cr.getEntityInputStream(), response.getOutputStream());
-        cr.getHeaders()
-                .forEach((e, k) -> response.addHeader(e, k.contains(HOSTNAME) ? k.get(0).replace(HOSTNAME, SELFNAME) : k.get(0)));
+//        cr.getHeaders()
+//                .forEach((e, k) -> response.addHeader(e, k.contains(HOSTNAME) ? k.get(0).replace(HOSTNAME, SELFNAME) : k.get(0)));
     }
 
     @RequestMapping(value = "/*", method = RequestMethod.POST)
@@ -111,13 +110,15 @@ public class Controller {
     }
 
     WebResource addHeaders(WebResource resource, HttpServletRequest request) {
-        resource.path(request.getRequestURI());
-        String s;
-        Enumeration<String> en = request.getHeaderNames();
-        while (en.hasMoreElements()) {
-            s = en.nextElement();
-            resource.header(s, request.getHeader(s).contains(SELFNAME+":"+SELFPORT) ? request.getHeader(s).replace(SELFNAME+":"+SELFPORT, HOSTNAME+":"+PORT) : request.getHeader(s));
-        }
+        resource.path(request.getServletPath());
+//        String s;
+//        Enumeration<String> en = request.getHeaderNames();
+//        while (en.hasMoreElements()) {
+//            s = en.nextElement();
+//            if (s.equalsIgnoreCase("Authorization"))
+//                resource.header(s, request.getHeader(s).contains(SELFNAME + ":" + SELFPORT) ? request.getHeader(s).replace(SELFNAME + ":" + SELFPORT, HOSTNAME + ":" + PORT) : request.getHeader(s));
+//        }
+        resource.header("Authorization","Basic c2FzaGE6Q2lzYzAxMjMh");
         return resource;
     }
 
